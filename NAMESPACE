@@ -1,0 +1,7 @@
+# useDynLib(NetBenefit)
+exportPattern("^[[:alpha:]]+")
+importFrom("graphics", "abline", "axis", "legend", "lines", "mtext",
+             "par", "plot", "text")
+importFrom("stats", "pbinom", "uniroot")
+export(ClassificationPlot)
+S3method(print, ClassificationPlot)
