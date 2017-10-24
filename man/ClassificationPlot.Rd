@@ -5,14 +5,16 @@
 \title{Classification plot}
 \usage{
 ClassificationPlot(model1, model2, outcome, data, cutoffs = seq(0, 0.9, by =
-  0.1), col1 = "darkgreen", col2 = "red", lwd = 3, TreatAll = T,
-  colTreatAll = "grey", TreatNone = T, colTreatNone = "black",
-  SNBpl = T, colSNB = "blue", axes = T, ShowAUC = T,
-  AUCcoord = c(0.625, 0.95), LegCoord = c(0.75, 1.05), y.intersp = 0.75,
-  RiskSet = c("model1", "model2", "both", "none"), cex.leg = 0.75,
-  cex.auc = 0.85, GraphSettings = NULL, PrintMessages = T,
-  UtilityMeasures = c("default", "accuracy", "utility"), loc = -0.2,
-  LabelsModels = c("Model 1", "Model 2"), ylab = "Proportion", ...)
+  0.1), pointwiseCI = c("none", "TPR", "FPR", "both"),
+  pointwiseCIcutoff = NULL, col1 = "darkgreen", col2 = "red", lwd = 3,
+  TreatAll = T, colTreatAll = "grey", TreatNone = T,
+  colTreatNone = "black", SNBpl = T, colSNB = "blue", axes = T,
+  ShowAUC = T, AUCcoord = c(0.625, 0.95), LegCoord = c(0.75, 1.05),
+  y.intersp = 0.75, RiskSet = c("model1", "model2", "both", "none"),
+  cex.leg = 0.75, cex.auc = 0.85, GraphSettings = NULL,
+  PrintMessages = T, UtilityMeasures = c("default", "accuracy", "utility"),
+  loc = -0.2, LabelsModels = c("Model 1", "Model 2"), ylab = "Proportion",
+  ...)
 }
 \arguments{
 \item{model1}{Variable with the risks of the (baseline) model.}
@@ -24,6 +26,12 @@ ClassificationPlot(model1, model2, outcome, data, cutoffs = seq(0, 0.9, by =
 \item{data}{Dataframe in which the predicted risks are to be found}
 
 \item{cutoffs}{A vector containing the cutoffs for which the performance measures need to be calculated.}
+
+\item{pointwiseCI}{Can be used to plot the pointwise confidence intervals of the TPR and/or FPR at specific cutoffs.
+\code{"TPR"} when this needs to be plotted for the TPR, \code{"FPR"} when this only needs to be plotted for the FPR
+and \code{"both"} when it has to be plotted for both the FPR and TPR.}
+
+\item{pointwiseCIcutoff}{A vector of cutoffs for which the pointwise confidence intervals have to be calculated.}
 
 \item{col1}{Color for the lines of the TPR model(s).}
 
@@ -90,8 +98,8 @@ Default is \code{'proportions'}.}
 The classification plot is plotted and an object containing the performance measures of the model(s) is returned.
 }
 \description{
-This function can be used to visualize the performance measure of a model or two competing models. An object is also
-returned containing the performance measures of the model(s).
+This function can be used to visualize the performance measures and create a custom classification plot of a model or two competing models.
+An object is also returned containing the performance measures of the model(s).
 }
 \examples{
 #---------#
@@ -127,6 +135,9 @@ ClassificationPlot(Model1, Model2, Outcome, Df3, RiskSet = "both")
 ClassificationPlot(Model1, Model2, Outcome, Df3, RiskSet = "both", UtilityMeasures = "utility")
 }
 \references{
+Verbakel JY, Steyerberg EW, Uno H, De Cock B, Collins G, Van Calster B. From ROC curves to classification plots for markers 
+and models: from wast of ink towards useful insights. \emph{Submitted}.
+
 Vickers AJ, Elkin EB. Decision Curve Analysis: A Novel Method for Evaluating Prediction Models.
 \emph{Medical Decision Making} 2006, 26(6): 565-574
 

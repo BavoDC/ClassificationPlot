@@ -1,7 +1,7 @@
 #' Classification plot
 #'
-#' This function can be used to visualize the performance measure of a model or two competing models. An object is also
-#' returned containing the performance measures of the model(s).
+#' This function can be used to visualize the performance measures and create a custom classification plot of a model or two competing models.
+#' An object is also returned containing the performance measures of the model(s).
 #'
 #' @param model1 Variable with the risks of the (baseline) model.
 #' @param model2 Variable with the risks of the competing model.
@@ -45,9 +45,15 @@
 #' @param LabelsModels The labels for the model(s) when \code{Riskset!='none'}.
 #' @param ylab Label for the y-axis.
 #' @param ... Arguments to be passed to \code{\link{plot}}, see \code{\link{par}}.
+#' @param pointwiseCI Can be used to plot the pointwise confidence intervals of the TPR and/or FPR at specific cutoffs.
+#' \code{"TPR"} when this needs to be plotted for the TPR, \code{"FPR"} when this only needs to be plotted for the FPR
+#' and \code{"both"} when it has to be plotted for both the FPR and TPR.
+#' @param pointwiseCIcutoff A vector of cutoffs for which the pointwise confidence intervals have to be calculated.
 #'
 #' @return The classification plot is plotted and an object containing the performance measures of the model(s) is returned.
 #'
+#' @references Verbakel JY, Steyerberg EW, Uno H, De Cock B, Collins G, Van Calster B. From ROC curves to classification plots for markers 
+#' and models: from wast of ink towards useful insights. \emph{Submitted}.
 #' @references Vickers AJ, Elkin EB. Decision Curve Analysis: A Novel Method for Evaluating Prediction Models.
 #' \emph{Medical Decision Making} 2006, 26(6): 565-574
 #' @references Van Calster B, Vickers A, Pencina M, Baker S, Timmerman D, Steyerberg EW.
@@ -90,6 +96,8 @@
 #' ClassificationPlot(Model1, Model2, Outcome, Df3, RiskSet = "both", UtilityMeasures = "utility")
 
 ClassificationPlot <- function(model1, model2, outcome, data, cutoffs = seq(0, 0.9, by = 0.1),
+                               pointwiseCI = c("none", "TPR", "FPR", "both"),
+                               pointwiseCIcutoff = NULL,
                                col1 = "darkgreen", col2 = "red",
                                lwd = 3, TreatAll = T, colTreatAll = "grey", TreatNone = T,
                                colTreatNone = "black",
@@ -107,6 +115,14 @@ ClassificationPlot <- function(model1, model2, outcome, data, cutoffs = seq(0, 0
   Argz = as.list(match.call())[-1]
   RiskSet = match.arg(RiskSet)
   UtilityMeasures = match.arg(UtilityMeasures)
+  pointwiseCI = match.arg(pointwiseCI)
+  if(pointwiseCI != "none" & is.null(pointwiseCIcutoff))
+    stop("Please specify the cutoff that has to be used.")
+  if(pointwiseCI != "none" & !is.numeric(pointwiseCIcutoff))
+    stop("pointwiseCI has to be of the type vector and has to be numeric.")
+  if(pointwiseCI != "none" & (any(pointwiseCIcutoff <= 0) | any(pointwiseCIcutoff >= 1)))
+     stop("Values must be > 0 and < 1.")
+    
   if(!is.data.frame(data)) stop("Has to be of type dataframe.")
   if(missing(model1) & !missing(model2)) stop("Please specify model 1.")
   if(min(cutoffs)<0 | max(cutoffs)>1) stop("Cutoffs < 0 or > 1 are not possible.")
@@ -124,7 +140,7 @@ ClassificationPlot <- function(model1, model2, outcome, data, cutoffs = seq(0, 0
     if(any(Df$m2<=0) | any(Df$m2>=1)) stop("Predicted probabilities have to be given for model1 (0 < risk < 1).")
   if(missing(model2) & RiskSet=="model2") stop("RiskSet cannot be calculated when model2 is not given.")
   Df$Outc  = eval(Argz$outcome, data)
-  if(!all(Df$outcome%in%0:1)) stop("The response variable can only contain 0 or 1.")
+  if(!all(Df$outcome %in% 0:1)) stop("The response variable can only contain 0 or 1.")
   Prev     = sum(Df$Outc)/nrow(Df)
   op = par("mfrow", "oma", "mai")
   if(RiskSet!="none"){
@@ -193,6 +209,36 @@ ClassificationPlot <- function(model1, model2, outcome, data, cutoffs = seq(0, 0
   if(SNBpl) lines(ft$dscore, netSE, col=colSNB, lty=1, lwd=lwd)
   if(TreatAll) lines(ft$dscore, SNBTA, col=colTreatAll, lty=4, lwd=lwd)
   if(TreatNone) abline(h=0, lty=2, col=colTreatNone)
+  
+  if(pointwiseCI != "none"){
+    pointwiseCIcutoff = sort(pointwiseCIcutoff)
+    pointwiseResults  = matrix(NA, length(pointwiseCIcutoff), 6)
+    rownames(pointwiseResults) = paste("cutoff", pointwiseCIcutoff)
+    colnames(pointwiseResults) = c("TPR", "TPRlcl", "TPRucl", "FPR", "FPRlcl", "FPRucl")
+    for(i in pointwiseCIcutoff){
+      Df$bin = sapply(Df$m1, 
+                   function(x) {
+                     if(is.na(x))
+                       NA
+                     else if(x < i)
+                       0
+                     else
+                       1
+                   })
+      tp  = sum(Df$bin == 1 & Df$Outc == 1)
+      fn  = sum(Df$bin == 0 & Df$Outc == 1)
+      tn  = sum(Df$bin == 0 & Df$Outc == 0)
+      fp  = sum(Df$bin == 1 & Df$Outc == 0)
+      TPRci = binci.desmon(tp, tp + fn)$out
+      FPRci = binci.desmon(fp, tn + fp)$out
+      if(pointwiseCI %in% c("TPR", "both"))
+        arrows(i, TPRci[1], i, TPRci[2], angle = 90, col = col1, code = 3, lwd = lwd * 0.75, length = 0.1)
+      if(pointwiseCI %in% c("FPR", "both"))
+        arrows(i, FPRci[1], i, FPRci[2], angle = 90, col = col2, code = 3, lwd = lwd * 0.75, length = 0.1)
+      pointwiseResults[which(pointwiseCIcutoff == i), ] = c(tp / (tp + fn), TPRci, fp / (fp + tn), FPRci)
+    }
+    pointwiseCIm1 = pointwiseResults
+  }
 
   if(!axes){
     axis(side=1, pos=0, at=seq(0,1, 0.1), labels=seq(0,1,0.1))
@@ -203,12 +249,42 @@ ClassificationPlot <- function(model1, model2, outcome, data, cutoffs = seq(0, 0
     lines(ft1$dscore, 1-ft1$SP, col=col2, lty=2, lwd=lwd)
     if(SNBpl) lines(ft1$dscore, netSE1, col=colSNB, lty=2, lwd=lwd)
     if(ShowAUC)
-      text(AUCcoord[1], AUCcoord[2], labels=paste("AUC ", LabelsModels[1]," = ",round(ft$AUC[1],digits = 3)," \n",
-                                            paste("AUC ", LabelsModels[2], " = ",round(ft1$AUC[1],digits = 3)), sep=""), pos=4,
+      text(AUCcoord[1], AUCcoord[2], labels=paste("AUC ", LabelsModels[1]," = ",round(ft$AUC[1],digits = 2)," \n",
+                                            paste("AUC ", LabelsModels[2], " = ",round(ft1$AUC[1],digits = 2)), sep=""), pos=4,
                      cex = cex.auc)
     LegText = c(paste("TPR", LabelsModels),paste("FPR", LabelsModels))
     LegCol  = c(rep(col1, 2), rep(col2, 2))
     LegLty  = c(rep(c(1,2), 2))
+    
+    if(pointwiseCI != "none"){
+      pointwiseCIcutoff = sort(pointwiseCIcutoff)
+      pointwiseResults  = matrix(NA, length(pointwiseCIcutoff), 6)
+      rownames(pointwiseResults) = paste("cutoff", pointwiseCIcutoff)
+      colnames(pointwiseResults) = c("TPR", "TPRlcl", "TPRucl", "FPR", "FPRlcl", "FPRucl")
+      for(i in pointwiseCIcutoff){
+        Df$bin = sapply(Df$m2, 
+                     function(x) {
+                       if(is.na(x))
+                         NA
+                       else if(x < i)
+                         0
+                       else
+                         1
+                     })
+        tp  = sum(Df$bin == 1 & Df$Outc == 1)
+        fn  = sum(Df$bin == 0 & Df$Outc == 1)
+        tn  = sum(Df$bin == 0 & Df$Outc == 0)
+        fp  = sum(Df$bin == 1 & Df$Outc == 0)
+        TPRci = binci.desmon(tp, tp + fn)$out
+        FPRci = binci.desmon(fp, tn + fp)$out
+        if(pointwiseCI %in% c("TPR", "both"))
+          arrows(i, TPRci[1], i, TPRci[2], angle = 90, col = col1, code = 3, lwd = lwd * 0.75, length = 0.1)
+        if(pointwiseCI %in% c("FPR", "both"))
+          arrows(i, FPRci[1], i, FPRci[2], angle = 90, col = col2, code = 3, lwd = lwd * 0.75, length = 0.1)
+        pointwiseResults[which(pointwiseCIcutoff == i), ] = c(tp / (tp + fn), TPRci, fp / (fp + tn), FPRci)
+      }
+      pointwiseCIm2 = pointwiseResults
+    }
 
 
   }else{
@@ -293,6 +369,13 @@ ClassificationPlot <- function(model1, model2, outcome, data, cutoffs = seq(0, 0
       mtext(side = 1, at = ATT, line = 7, text = round(nlr,digits=2), col = "black", cex=CEX)
       mtext(side = 1, at = ATT, line = 8, text = round(ppv,digits=2), col = "black", cex=CEX)
       mtext(side = 1, at = ATT, line = 9, text = round(npv,digits=2), col = "black", cex=CEX)
+    }
+  }
+  if(pointwiseCI != "none") {
+    Results$pointwiseCIs = if (exists("pointwiseCIm2")){
+      list(model1 = pointwiseCIm1, model2 = pointwiseCIm2)
+    }else{
+      pointwiseCIm1
     }
   }
   par(op)
