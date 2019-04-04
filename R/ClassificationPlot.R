@@ -99,9 +99,9 @@ ClassificationPlot <- function(model1, model2, outcome, data, cutoffs = seq(0, 0
                                pointwiseCI = c("none", "TPR", "FPR", "both"),
                                pointwiseCIcutoff = NULL,
                                col1 = "darkgreen", col2 = "red",
-                               lwd = 3, TreatAll = T, colTreatAll = "grey", TreatNone = T,
+                               lwd = 3, TreatAll = F, colTreatAll = "grey", TreatNone = F,
                                colTreatNone = "black",
-                               SNBpl = T, colSNB = "blue",
+                               SNBpl = F, colSNB = "blue",
                                axes = T, ShowAUC = T, AUCcoord = c(0.625, 0.95),
                                LegCoord = c(0.75, 1.05),
                                y.intersp = 0.75, RiskSet = c("model1", "model2", "both","none"),
@@ -122,20 +122,41 @@ ClassificationPlot <- function(model1, model2, outcome, data, cutoffs = seq(0, 0
     stop("pointwiseCI has to be of the type vector and has to be numeric.")
   if(pointwiseCI != "none" & (any(pointwiseCIcutoff <= 0) | any(pointwiseCIcutoff >= 1)))
      stop("Values must be > 0 and < 1.")
-    
-  if(!is.data.frame(data)) stop("Has to be of type dataframe.")
-  if(missing(model1) & !missing(model2)) stop("Please specify model 1.")
-  if(min(cutoffs)<0 | max(cutoffs)>1) stop("Cutoffs < 0 or > 1 are not possible.")
-  if(!is.character(LabelsModels)) stop("Only character strings are allowed.")
-  if(length(LabelsModels)>2) stop("Only one or two character strings are permitted.")
-  if(RiskSet=="both" & UtilityMeasures=="accuracy") stop("The accuracy options is not possible for both models.")
-  if(!"character" %in% class(ylab)) stop("Has to be of type character.")
+  
+  if(missing(model1) & !missing(model2))
+    stop("Please specify model 1.")  
+  if(!missing(data)) {
+  if(!is.data.frame(data))
+    stop("Has to be of type dataframe.")
+  } else {
+    if(!is.vector(model1))
+      stop("model 1 has to be of type vector.")
+    if(!missing(model2))
+      if(!is.vector(model2))
+        stop("model2 has to be of type vector.")
+    data = data.frame(model1 = model1, outcome = outcome)
+    if(!missing(model2))
+      data$model2 = model2
+  }
+
+  if(min(cutoffs)<0 | max(cutoffs)>1)
+    stop("Cutoffs < 0 or > 1 are not possible.")
+  if(!is.character(LabelsModels))
+    stop("Only character strings are allowed.")
+  if(length(LabelsModels)>2)
+    stop("Only one or two character strings are permitted.")
+  if(RiskSet=="both" & UtilityMeasures=="accuracy")
+    stop("The accuracy options is not possible for both models.")
+  if(!"character" %in% class(ylab))
+    stop("Has to be of type character.")
 
   n  = nrow(data)
   Df = data
   Df$m1    = eval(Argz$model1, data)
-  if(any(Df$m1<=0) | any(Df$m1>=1)) stop("Predicted probabilities have to be given for model1 (0 < risk < 1).")
-  if(!missing(model2)) Df$m2    = eval(Argz$model2, data)
+  if(any(Df$m1<=0) | any(Df$m1>=1))
+    stop("Predicted probabilities have to be given for model1 (0 < risk < 1).")
+  if(!missing(model2))
+    Df$m2 = eval(Argz$model2, data)
   if(!missing(model2))
     if(any(Df$m2<=0) | any(Df$m2>=1)) stop("Predicted probabilities have to be given for model1 (0 < risk < 1).")
   if(missing(model2) & RiskSet=="model2") stop("RiskSet cannot be calculated when model2 is not given.")
