@@ -194,13 +194,12 @@ ClassificationPlot <- function(model1, model2, outcome, data, cutoffs = seq(0, 0
   Results = list()
   Results$Model1 = PerfMeas(ft, cutoffs)
   Results$Model1$AUC     = ft$AUC
-  if(RiskSet%in%c("model1", "both")) list2env(as.list(cbind(Results$Model1$Summary[,,drop=F],
-                                               Results$Model1$AddInfo[,,drop=F])),
-                                 envir = environment())
+  list2env(as.list(cbind(Results$Model1$Summary[, , drop = F],
+                         Results$Model1$AddInfo[, , drop = F])), envir = environment())
   if(!missing(model2)){
     Results$Model2 = PerfMeas(ft1, cutoffs)
     Results$Model2$AUC     = ft1$AUC
-    if(RiskSet=="model2") list2env(as.list(cbind(Results$Model1$Summary[,,drop=F],
+    if(RiskSet == "model2") list2env(as.list(cbind(Results$Model1$Summary[,,drop=F],
                                                  Results$Model1$AddInfo[,,drop=F])
                                            ), envir = environment())
   }
